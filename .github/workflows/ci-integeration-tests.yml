@@ -11,26 +11,30 @@ jobs:
     strategy:
       matrix:
         python: ['3.8', '3.9', '3.10']
+      max-parallel: 1
     runs-on: ubuntu-latest
     name: Functional test
     steps:
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python }}
 
       - name: Check out repository code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Define env name
         id: define-environment-name
         run: |
-          echo "env-name=feast-teradata-ci-$(date +%s%N)" >> $GITHUB_OUTPUT
+          ENV_VERSION=$(echo $PYTHON_VERSION | tr '.' '-')
+          echo "env-name=feast-ci-py${ENV_VERSION}-$(date +%s%N)" >> $GITHUB_OUTPUT
+        env:
+          PYTHON_VERSION: '${{ matrix.python }}'
 
       - name: Start test environment
         id: start-test-environment
         run: |
-          RESULT=$(curl --location --request POST 'https://api.clearscape.teradata.com/environments' \
+          RESULT=$(curl -f --location --request POST 'https://api.clearscape.teradata.com/environments' \
             --header "Authorization: Bearer $CSAE_TOKEN" \
             --header 'Content-Type: application/json' \
             --data-raw "{
@@ -61,7 +65,7 @@ jobs:
           cd test_repo && python test_workflow.py
         env:
           CI_RUNNING: 'true'
-          CI_TD_HOST: '${{ steps.start-test-environment.outputs.dbc-host }}'
+          CI_TD_HOST: '${{ steps.start-test-environment.outputs.db-host }}'
           CI_TD_USER: 'demo_user'
           CI_TD_PASSWORD: '${{ secrets.CSAE_ENV_PASSWORD }}'
           CI_TD_DATABASE: 'demo_user'
@@ -71,7 +75,7 @@ jobs:
       - name: Delete test environment
         if: always()
         run: |
-          curl --location --request DELETE "https://api.clearscape.teradata.com/environments/$CSAE_ENV_NAME" \
+          curl -f --location --request DELETE "https://api.clearscape.teradata.com/environments/$CSAE_ENV_NAME" \
             --header "Authorization: Bearer $CSAE_TOKEN"
         env:
           CSAE_TOKEN: '${{ secrets.CSAE_TOKEN }}'
