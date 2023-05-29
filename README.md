@@ -126,7 +126,7 @@ registry:
 
 ### 1.0.4
 
-- Update: bump Feast dependency to 0.28.0 
+- Update: bump Feast dependency to 0.31.1 
 
 ### 1.0.3
 
